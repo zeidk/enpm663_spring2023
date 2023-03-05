@@ -1,0 +1,1 @@
+alias run_l6='ros2 launch ariac_gazebo ariac.launch.py trial_name:=lecture6 competitor_pkg:=enpm663_lecture6 sensor_config:=lecture6'
