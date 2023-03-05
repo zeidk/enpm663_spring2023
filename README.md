@@ -1,4 +1,4 @@
-# enpm663_spring2023
+# lecture3
 
 ## bash_functions
 
