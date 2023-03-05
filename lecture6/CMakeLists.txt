@@ -16,7 +16,7 @@ find_package(tf2_ros REQUIRED)
 find_package(orocos_kdl REQUIRED)
 find_package(std_srvs REQUIRED)
 
-include_directories(include/enpm663_ref_frames)
+include_directories(include/lecture6)
 
 set(dependencies
   rclcpp
@@ -29,14 +29,14 @@ set(dependencies
   tf2_geometry_msgs
 )
 
-add_executable(sensor_camera src/sensor_camera.cpp src/main.cpp)
-ament_target_dependencies(sensor_camera ${dependencies})
+add_executable(lecture6 src/sensor_camera.cpp src/main.cpp)
+ament_target_dependencies(lecture6 ${dependencies})
 
 install(TARGETS
- sensor_camera
+ lecture6
 DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch include config
+install(DIRECTORY launch include config rviz
   DESTINATION share/${PROJECT_NAME}/
 )
 
