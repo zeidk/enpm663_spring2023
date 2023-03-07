@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>lecture6</name>
+  <name>lecture7</name>
   <version>0.0.0</version>
-  <description>Package which focuses on reference frames and transformations</description>
+  <description>Package which focuses on moveit</description>
   <maintainer email="zeidk@umd.edu">zeid</maintainer>
   <license>TODO: License declaration</license>
 
