@@ -15,9 +15,9 @@ FloorRobot::FloorRobot()
     topic_cb_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     options.callback_group = topic_cb_group_;
 
-    // floor_robot_task_sub_ = this->create_subscription<lecture7_msgs::msg::FloorRobotTask>(
-    //     "/ariac/sensors/kts1_camera/image", rclcpp::SensorDataQoS(),
-    //     std::bind(&FloorRobot::kts1_camera_cb, this, std::placeholders::_1), options);
+    competition_state_sub_ = this->create_subscription<ariac_msgs::msg::CompetitionState>(
+        "/ariac/competition_state", 1,
+        std::bind(&FloorRobot::competition_state_cb, this, std::placeholders::_1), options);
 
     kts1_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
         "/ariac/sensors/kts1_camera/image", rclcpp::SensorDataQoS(),
@@ -61,6 +61,13 @@ FloorRobot::~FloorRobot()
 {
     floor_robot_.~MoveGroupInterface();
 }
+
+void FloorRobot::competition_state_cb(
+    const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg)
+{
+    competition_state_ = msg->competition_state;
+}
+
 
 void FloorRobot::kts1_camera_cb(
     const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg)
@@ -774,12 +781,29 @@ bool FloorRobot::CompleteOrders()
     bool success;
     while (true)
     {
+        if (competition_state_ == ariac_msgs::msg::CompetitionState::ENDED)
+        {
+            success = false;
+            break;
+        }
+
         // complete each order from the queue
         if (orders_.size() == 0)
         {
-            RCLCPP_INFO(get_logger(), "Completed all orders");
-            success = true;
-            break;
+            if (competition_state_ != ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE)
+            {
+                // wait for more orders
+                RCLCPP_INFO(get_logger(), "Waiting for orders...");
+                while (orders_.size() == 0)
+                {
+                }
+            }
+            else
+            {
+                RCLCPP_INFO(get_logger(), "Completed all orders");
+                success = true;
+                break;
+            }
         }
 
         current_order_ = orders_.front();
@@ -793,6 +817,7 @@ bool FloorRobot::CompleteOrders()
         auto completed_order = competitor_interfaces::msg::CompletedOrder();
         completed_order.order_id = current_order_.id;
         completed_order_pub_->publish(completed_order);
+        FloorRobot::FloorRobotSendHome();
     }
 
     return success;
@@ -839,11 +864,7 @@ int main(int argc, char *argv[])
                 { executor.spin(); })
         .detach();
     // floor_robot->FloorRobotSendHome();
-    floor_robot->CompleteOrders();
-
-    while (rclcpp::ok())
-    {
-    }
+    // floor_robot->CompleteOrders();
 
     rclcpp::shutdown();
 }

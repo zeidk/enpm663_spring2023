@@ -5,7 +5,7 @@ from rclpy.node import Node
 
 # State of the competition message
 from ariac_msgs.msg import CompetitionState
-# Order message
+from std_msgs.msg import String
 from ariac_msgs.msg import Order as OrderMsg
 from ariac_msgs.msg import KittingTask as KittingTaskMsg
 from ariac_msgs.msg import AssemblyTask as AssemblyTaskMsg
@@ -15,78 +15,81 @@ from ariac_msgs.msg import AssemblyPart as AssemblyPartMsg
 from competitor_interfaces.msg import FloorRobotTask as FloorRobotTaskMsg
 from competitor_interfaces.msg import CompletedOrder as CompletedOrderMsg
 
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+
 from ariac_msgs.srv import MoveAGV as MoveAGVSrv
+from ariac_msgs.srv import SubmitOrder as SubmitOrderSrv
 from std_srvs.srv import Trigger
 
 
 # -----------------------------------------------------------------------------
-class KittingTask:
-    def __init__(self, kitting_task: KittingTaskMsg) -> None:
-        self.agv_number = kitting_task.agv_number
-        self.tray_id = kitting_task.tray_id
-        self.destination = kitting_task.destination
-        # list of KittingPart objects
-        self.parts = list(map(lambda x: KittingPart(x), kitting_task.parts))
+# class KittingTask:
+#     def __init__(self, kitting_task: KittingTaskMsg) -> None:
+#         self.agv_number = kitting_task.agv_number
+#         self.tray_id = kitting_task.tray_id
+#         self.destination = kitting_task.destination
+#         # list of KittingPart objects
+#         self.parts = list(map(lambda x: KittingPart(x), kitting_task.parts))
 
 
-# -----------------------------------------------------------------------------
-class AssemblyTask:
-    def __init__(self, assembly_task: AssemblyTaskMsg) -> None:
-        self.agv_number = assembly_task.agv_number
-        self.station = assembly_task.station
-        self.parts = list(map(lambda x: AssemblyPart(x), assembly_task.parts))
+# # -----------------------------------------------------------------------------
+# class AssemblyTask:
+#     def __init__(self, assembly_task: AssemblyTaskMsg) -> None:
+#         self.agv_number = assembly_task.agv_number
+#         self.station = assembly_task.station
+#         self.parts = list(map(lambda x: AssemblyPart(x), assembly_task.parts))
 
 
-# -----------------------------------------------------------------------------
-class CombinedTask:
-    def __init__(self) -> None:
-        pass
+# # -----------------------------------------------------------------------------
+# class CombinedTask:
+#     def __init__(self) -> None:
+#         pass
 
 
-# -----------------------------------------------------------------------------
-class KittingPart:
-    def __init__(self, kitting_part: KittingPartMsg) -> None:
-        self.part_type = kitting_part.part.type
-        self.part_color = kitting_part.part.color
-        self.quadrant = kitting_part.quadrant
+# # -----------------------------------------------------------------------------
+# class KittingPart:
+#     def __init__(self, kitting_part: KittingPartMsg) -> None:
+#         self.part_type = kitting_part.part.type
+#         self.part_color = kitting_part.part.color
+#         self.quadrant = kitting_part.quadrant
 
 
-# -----------------------------------------------------------------------------
-class AssemblyPart:
-    def __init__(self, assembly_part: AssemblyPartMsg) -> None:
-        self.part_type = assembly_part.part.type
-        self.part_color = assembly_part.part.color
-        self.assembled_pose = assembly_part.assembled_pose
-        self.install_direction = assembly_part.install_direction
+# # -----------------------------------------------------------------------------
+# class AssemblyPart:
+#     def __init__(self, assembly_part: AssemblyPartMsg) -> None:
+#         self.part_type = assembly_part.part.type
+#         self.part_color = assembly_part.part.color
+#         self.assembled_pose = assembly_part.assembled_pose
+#         self.install_direction = assembly_part.install_direction
 
 
-# -----------------------------------------------------------------------------
-class CombinedPart:
-    def __init__(self) -> None:
-        pass
+# # -----------------------------------------------------------------------------
+# class CombinedPart:
+#     def __init__(self) -> None:
+#         pass
 
 
-# -----------------------------------------------------------------------------
-class Order:
-    ''' Order class for storing order information from the topic /ariac/orders.
-    '''
+# # -----------------------------------------------------------------------------
+# class Order:
+#     ''' Order class for storing order information from the topic /ariac/orders.
+#     '''
 
-    def __init__(self, msg: OrderMsg) -> None:
-        self.order_id = msg.id
-        self.order_type = msg.type
-        self.order_priority = msg.priority
+#     def __init__(self, msg: OrderMsg) -> None:
+#         self.order_id = msg.id
+#         self.order_type = msg.type
+#         self.order_priority = msg.priority
 
-        if self.order_type == OrderMsg.KITTING:
-            self.order_task = KittingTask(msg.kitting_task)
-        elif self.order_type == OrderMsg.ASSEMBLY:
-            self.order_task = AssemblyTask(msg.assembly_task)
-        elif self.order_type == OrderMsg.COMBINED:
-            self.order_task = CombinedTask(msg.combined_task)
-        else:
-            self.order_task = None
+#         if self.order_type == OrderMsg.KITTING:
+#             self.order_task = KittingTask(msg.kitting_task)
+#         elif self.order_type == OrderMsg.ASSEMBLY:
+#             self.order_task = AssemblyTask(msg.assembly_task)
+#         elif self.order_type == OrderMsg.COMBINED:
+#             self.order_task = CombinedTask(msg.combined_task)
+#         else:
+#             self.order_task = None
             
-    def __str__(self) -> str:
-        return f'Order ID: {self.order_id}, Order Type: {self.order_type}, Order Priority: {self.order_priority}'
+#     def __str__(self) -> str:
+#         return f'Order ID: {self.order_id}, Order Type: {self.order_type}, Order Priority: {self.order_priority}'
 
 
 # -----------------------------------------------------------------------------
@@ -111,38 +114,48 @@ class CompetitionInterface(Node):
         self.competition_state = None
         self.orders = []
         self.announced_orders = []
+        
+        # Multithreading
+        self.group1 = MutuallyExclusiveCallbackGroup()
+        self.group2 = MutuallyExclusiveCallbackGroup()
+        self.group3 = MutuallyExclusiveCallbackGroup()
+        self.group4 = MutuallyExclusiveCallbackGroup()
 
         # Create subscription to competition state
         self.competition_state_sub = self.create_subscription(
             CompetitionState,
             '/ariac/competition_state',
             self.competition_state_cb,
-            10)
+            10, callback_group=self.group1)
 
         # Create subscription to orders
         self.orders_sub = self.create_subscription(
             OrderMsg,
             '/ariac/orders',
             self.orders_cb,
-            10)
+            10,
+            callback_group=self.group1)
         
         # Create subscription to orders
         self.completed_order_sub = self.create_subscription(
             CompletedOrderMsg,
             '/competitor/completed_order',
             self.completed_order_cb,
-            1)
+            1,
+            callback_group=self.group1)
         
         # Publishers
         self.floor_robot_task_pub = self.create_publisher(FloorRobotTaskMsg, '/competitor/floor_robot_task', 1)
-        
+
         # services
         self.start_competition_client = self.create_client(Trigger, '/ariac/start_competition')
         self.end_competition_client = self.create_client(Trigger, '/ariac/end_competition')
-        
+         
         timer_period = 0.5  # seconds
-        self.task_manager_timer = self.create_timer(timer_period, self.task_manager_cb)
+        self.task_manager_timer = self.create_timer(timer_period, self.task_manager_cb, callback_group=self.group2)
+        self.submitted_order = None
 
+        self.start_competition()
     # -----------------------------------------------------------------------------
 
     def completed_order_cb(self, msg) -> None:
@@ -151,12 +164,9 @@ class CompetitionInterface(Node):
         Arguments:
             msg -- ROS2 message of type competitor_interfaces/CompletedOrder
         '''
-        for order in self.announced_orders:
-            if order.id == msg.order_id:
-                if order.type == OrderMsg.KITTING:
-                    agv = order.kitting_task.agv_number
-                    self.lock_agv(agv)
-                    self.move_agv(agv, order.kitting_task.destination)
+        # self.get_logger().info('completed_order_cb')
+        self.submitted_order = msg
+        
                 
                 
     def task_manager_cb(self) -> None:
@@ -165,18 +175,32 @@ class CompetitionInterface(Node):
         Arguments:
             msg -- ROS2 message of type ariac_msgs/Order
         '''
+        # self.get_logger().info('task_manager_cb')
         
-        for order in self.orders:
-            if order.type == OrderMsg.KITTING:
-                msg = FloorRobotTaskMsg()
-                msg.id = order.id
-                msg.type = FloorRobotTaskMsg.KITTING
-                msg.kitting_task = order.kitting_task
-                msg.priority = order.priority
-                # Publish the message
-                self.floor_robot_task_pub.publish(msg)
-                self.announced_orders.append(order)
-                self.orders.remove(order)
+        if len(self.orders) > 0:
+            for order in self.orders:
+                if order.type == OrderMsg.KITTING:
+                    msg = FloorRobotTaskMsg()
+                    msg.id = order.id
+                    msg.type = FloorRobotTaskMsg.KITTING
+                    msg.kitting_task = order.kitting_task
+                    msg.priority = order.priority
+                    # Publish the message
+                    self.floor_robot_task_pub.publish(msg)
+                    self.announced_orders.append(order)
+                    self.orders.remove(order)
+                
+        if self.submitted_order is not None:
+            for order in self.announced_orders:
+                if order.id == self.submitted_order.order_id:
+                    if order.type == OrderMsg.KITTING:
+                        agv = order.kitting_task.agv_number
+                        self.lock_agv(agv)
+                        self.move_agv(agv, order.kitting_task.destination)
+                        self.submit_order(order.id)
+                        # self.announced_orders.remove(order)
+                        self.submitted_order = None
+        # self.get_logger().info('task_manager_cb')
         
         
     # -----------------------------------------------------------------------------
@@ -187,7 +211,7 @@ class CompetitionInterface(Node):
         Arguments:
             msg -- ROS2 message of type ariac_msgs/Order
         '''
-        # self.orders.append(Order(msg))
+        self.get_logger().info(f'Received Order: {msg.id}')
         self.orders.append(msg)
 
     # -----------------------------------------------------------------------------
@@ -262,7 +286,8 @@ class CompetitionInterface(Node):
     # -----------------------------------------------------------------------------
     def lock_agv(self, agv_num):
         service_name = '/ariac/agv' + str(agv_num) + '_lock_tray'
-        lock_agv_client = self.create_client(Trigger, service_name)
+        self.get_logger().info(service_name)
+        lock_agv_client = self.create_client(Trigger, service_name, callback_group=self.group3)
         # Create trigger request and call lock agv service
         request = Trigger.Request()
         future = lock_agv_client.call_async(request)
@@ -296,5 +321,16 @@ class CompetitionInterface(Node):
             self.get_logger().info(f'Unable to complete {service_name} service')
 
     # -----------------------------------------------------------------------------
-    def submit_order(self):
-        pass
+    def submit_order(self, order_id):
+        submit_order_client = self.create_client(SubmitOrderSrv, '/ariac/submit_order')
+        request = SubmitOrderSrv.Request()
+        request.order_id = order_id
+        future = submit_order_client.call_async(request)
+        # Wait until the service call is completed
+        rclpy.spin_until_future_complete(self, future)
+
+        if future.result().success:
+            self.get_logger().info(f'Order {order_id} has been submitted')
+        else:
+            self.get_logger().info(f'Unable to submit order {order_id}')
+        

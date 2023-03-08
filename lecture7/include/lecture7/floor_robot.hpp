@@ -31,10 +31,13 @@
 #include <ariac_msgs/msg/kitting_task.hpp>
 #include <ariac_msgs/msg/kit_tray_pose.hpp>
 #include <ariac_msgs/msg/vacuum_gripper_state.hpp>
+#include <ariac_msgs/msg/competition_state.hpp>
 
 #include <ariac_msgs/srv/change_gripper.hpp>
 #include <ariac_msgs/srv/vacuum_gripper_control.hpp>
 #include <ariac_msgs/srv/perform_quality_check.hpp>
+
+#include <std_msgs/msg/bool.hpp>
 
 #include <competitor_interfaces/msg/floor_robot_task.hpp>
 #include <competitor_interfaces/msg/completed_order.hpp>
@@ -71,7 +74,6 @@ private:
 
     geometry_msgs::msg::Quaternion SetRobotOrientation(double rotation);
 
-    // Helper Functions (should be moved to utils)
     void LogPose(geometry_msgs::msg::Pose p);
     geometry_msgs::msg::Pose MultiplyPose(geometry_msgs::msg::Pose p1, geometry_msgs::msg::Pose p2);
     geometry_msgs::msg::Pose BuildPose(double x, double y, double z, geometry_msgs::msg::Quaternion orientation);
@@ -99,6 +101,7 @@ private:
 
     // Subscriptions
     rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr floor_gripper_state_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr competition_state_sub_;
 
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts1_camera_sub_;
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts2_camera_sub_;
@@ -109,6 +112,7 @@ private:
     // Orders List
     competitor_interfaces::msg::FloorRobotTask current_order_;
     std::vector<competitor_interfaces::msg::FloorRobotTask> orders_;
+    unsigned int competition_state_;
 
     // Gripper State
     ariac_msgs::msg::VacuumGripperState floor_gripper_state_;
@@ -144,10 +148,10 @@ private:
     void kts2_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void left_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void right_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
-
+    // Competition state callback
+    void competition_state_cb(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
     // Gripper State Callback
     void floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg);
-
     // Floor Robot Task Callback
     void floor_robot_task_cb(const competitor_interfaces::msg::FloorRobotTask::ConstSharedPtr msg);
 
