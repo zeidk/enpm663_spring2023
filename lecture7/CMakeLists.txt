@@ -7,18 +7,12 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(ariac_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(tf2 REQUIRED)
-find_package(tf2_geometry_msgs REQUIRED)
-find_package(tf2_ros REQUIRED)
-find_package(orocos_kdl REQUIRED)
-find_package(std_srvs REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+
 
 include_directories(include/lecture7)
 
-set(dependencies
+set(SENSOR_CAMERA_DEPENDENCIES
   rclcpp
   std_srvs
   ariac_msgs
@@ -29,8 +23,28 @@ set(dependencies
   tf2_geometry_msgs
 )
 
-add_executable(lecture7_exe src/sensor_camera.cpp src/main.cpp)
-ament_target_dependencies(lecture7_exe ${dependencies})
+foreach(Dependency IN ITEMS ${SENSOR_CAMERA_DEPENDENCIES})
+  find_package(${Dependency} REQUIRED)
+endforeach()
+
+
+set(FLOOR_ROBOT_DEPENDENCIES
+  rclcpp 
+  moveit_ros_planning_interface
+  ariac_msgs
+  shape_msgs
+)
+
+foreach(Dependency IN ITEMS ${FLOOR_ROBOT_DEPENDENCIES})
+  find_package(${Dependency} REQUIRED)
+endforeach()
+
+# Executables
+add_executable(sensor_camera_exe src/sensor_camera.cpp src/main.cpp)
+ament_target_dependencies(sensor_camera_exe ${SENSOR_CAMERA_DEPENDENCIES})
+
+add_executable(floor_robot_exe src/floor_robot.cpp)
+ament_target_dependencies(floor_robot_exe ${FLOOR_ROBOT_DEPENDENCIES})
 
 # Install Python modules
 ament_python_install_package(${PROJECT_NAME} SCRIPTS_DESTINATION lib/${PROJECT_NAME})
@@ -42,7 +56,8 @@ install(PROGRAMS
 )
 
 install(TARGETS
-  lecture7_exe
+  sensor_camera_exe
+  floor_robot_exe
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch include config rviz

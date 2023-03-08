@@ -15,9 +15,9 @@ FloorRobot::FloorRobot()
     topic_cb_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     options.callback_group = topic_cb_group_;
 
-    floor_robot_task_sub_ = this->create_subscription<lecture7_msgs::msg::FloorRobotTask>(
-        "/ariac/sensors/kts1_camera/image", rclcpp::SensorDataQoS(),
-        std::bind(&FloorRobot::kts1_camera_cb, this, std::placeholders::_1), options);
+    // floor_robot_task_sub_ = this->create_subscription<lecture7_msgs::msg::FloorRobotTask>(
+    //     "/ariac/sensors/kts1_camera/image", rclcpp::SensorDataQoS(),
+    //     std::bind(&FloorRobot::kts1_camera_cb, this, std::placeholders::_1), options);
 
     kts1_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
         "/ariac/sensors/kts1_camera/image", rclcpp::SensorDataQoS(),
@@ -111,12 +111,6 @@ void FloorRobot::floor_gripper_state_cb(
     const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg)
 {
     floor_gripper_state_ = *msg;
-}
-
-void FloorRobot::ceiling_gripper_state_cb(
-    const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg)
-{
-    ceiling_gripper_state_ = *msg;
 }
 
 geometry_msgs::msg::Pose FloorRobot::MultiplyPose(
@@ -595,7 +589,7 @@ bool FloorRobot::FloorRobotPickandPlaceTray(int tray_id, int agv_num)
     floor_robot_.detachObject(tray_name);
 
     // publish to robot state
-    LockAGVTray(agv_num);
+    // LockAGVTray(agv_num);
 
     waypoints.clear();
     waypoints.push_back(BuildPose(agv_tray_pose.position.x, agv_tray_pose.position.y,
@@ -761,58 +755,59 @@ bool FloorRobot::FloorRobotPlacePartOnKitTray(int agv_num, int quadrant)
 bool FloorRobot::CompleteOrders()
 {
     // Wait for first order to be published
-    while (orders_.size() == 0)
-    {
-    }
+    // while (orders_.size() == 0)
+    // {
+    // }
 
-    bool success;
-    while (true)
-    {
-        if (competition_state_ == ariac_msgs::msg::CompetitionState::ENDED)
-        {
-            success = false;
-            break;
-        }
+    // bool success;
+    // while (true)
+    // {
+    //     if (competition_state_ == ariac_msgs::msg::CompetitionState::ENDED)
+    //     {
+    //         success = false;
+    //         break;
+    //     }
 
-        if (orders_.size() == 0)
-        {
-            if (competition_state_ != ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE)
-            {
-                // wait for more orders
-                RCLCPP_INFO(get_logger(), "Waiting for orders...");
-                while (orders_.size() == 0)
-                {
-                }
-            }
-            else
-            {
-                RCLCPP_INFO(get_logger(), "Completed all orders");
-                success = true;
-                break;
-            }
-        }
+    //     if (orders_.size() == 0)
+    //     {
+    //         if (competition_state_ != ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE)
+    //         {
+    //             // wait for more orders
+    //             RCLCPP_INFO(get_logger(), "Waiting for orders...");
+    //             while (orders_.size() == 0)
+    //             {
+    //             }
+    //         }
+    //         else
+    //         {
+    //             RCLCPP_INFO(get_logger(), "Completed all orders");
+    //             success = true;
+    //             break;
+    //         }
+    //     }
 
-        current_order_ = orders_.front();
-        orders_.erase(orders_.begin());
+    //     current_order_ = orders_.front();
+    //     orders_.erase(orders_.begin());
 
-        if (current_order_.type == ariac_msgs::msg::Order::KITTING)
-        {
-            FloorRobot::CompleteKittingTask(current_order_.kitting_task);
-        }
-        else if (current_order_.type == ariac_msgs::msg::Order::ASSEMBLY)
-        {
-            FloorRobot::CompleteAssemblyTask(current_order_.assembly_task);
-        }
-        else if (current_order_.type == ariac_msgs::msg::Order::COMBINED)
-        {
-            FloorRobot::CompleteCombinedTask(current_order_.combined_task);
-        }
+    //     if (current_order_.type == ariac_msgs::msg::Order::KITTING)
+    //     {
+    //         FloorRobot::CompleteKittingTask(current_order_.kitting_task);
+    //     }
+    //     else if (current_order_.type == ariac_msgs::msg::Order::ASSEMBLY)
+    //     {
+    //         FloorRobot::CompleteAssemblyTask(current_order_.assembly_task);
+    //     }
+    //     else if (current_order_.type == ariac_msgs::msg::Order::COMBINED)
+    //     {
+    //         FloorRobot::CompleteCombinedTask(current_order_.combined_task);
+    //     }
 
         // Submit order
-        FloorRobot::SubmitOrder(current_order_.id);
-    }
+        // FloorRobot::SubmitOrder(current_order_.id);
+    // }
 
-    return success;
+    // return success;
+    return true;
 }
 
 bool FloorRobot::CompleteKittingTask(ariac_msgs::msg::KittingTask task)
@@ -828,182 +823,31 @@ bool FloorRobot::CompleteKittingTask(ariac_msgs::msg::KittingTask task)
     }
 
     // Check quality
-    auto request = std::make_shared<ariac_msgs::srv::PerformQualityCheck::Request>();
-    request->order_id = current_order_.id;
-    auto result = quality_checker_->async_send_request(request);
-    result.wait();
+    // auto request = std::make_shared<ariac_msgs::srv::PerformQualityCheck::Request>();
+    // request->order_id = current_order_.id;
+    // auto result = quality_checker_->async_send_request(request);
+    // result.wait();
 
-    if (!result.get()->all_passed)
-    {
-        RCLCPP_ERROR(get_logger(), "Issue with shipment");
-    }
+    // if (!result.get()->all_passed)
+    // {
+    //     RCLCPP_ERROR(get_logger(), "Issue with shipment");
+    // }
 
     // MoveAGV(task.agv_number, task.destination);
 
     return true;
 }
 
-
-bool FloorRobot::CompleteCombinedTask(ariac_msgs::msg::CombinedTask task)
+// ================================
+int main(int argc, char *argv[])
 {
-    // Decide on a tray to use
-    int id;
-    if (kts1_trays_.size() != 0)
-    {
-        id = kts1_trays_[0].id;
-    }
-    else if (kts2_trays_.size() != 0)
-    {
-        id = kts2_trays_[0].id;
-    }
-    else
-    {
-        RCLCPP_ERROR(get_logger(), "No trays available.");
-        return false;
-    }
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<FloorRobot>();
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(node);
+    std::thread([&executor]()
+                { executor.spin(); })
+        .detach();
 
-    // Decide which AGV to use
-    int agv_number;
-    if (task.station == ariac_msgs::msg::CombinedTask::AS1 or task.station == ariac_msgs::msg::CombinedTask::AS2)
-    {
-        agv_number = 1;
-    }
-    else
-    {
-        agv_number = 4;
-    }
-
-    // MoveAGV(agv_number, ariac_msgs::srv::MoveAGV::Request::KITTING);
-
-    FloorRobotPickandPlaceTray(id, agv_number);
-
-    int count = 1;
-    for (auto assembly_part : task.parts)
-    {
-        FloorRobotPickBinPart(assembly_part.part);
-        FloorRobotPlacePartOnKitTray(agv_number, count);
-        count++;
-    }
-
-    // int destination;
-    // if (task.station == ariac_msgs::msg::CombinedTask::AS1 or task.station == ariac_msgs::msg::CombinedTask::AS3)
-    // {
-    //     destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_FRONT;
-    // }
-    // else
-    // {
-    //     destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_BACK;
-    // }
-
-    // MoveAGV(agv_number, destination);
-
-    CeilingRobotMoveToAssemblyStation(task.station);
-
-    // Get Assembly Poses
-    auto request = std::make_shared<ariac_msgs::srv::GetPreAssemblyPoses::Request>();
-    request->order_id = current_order_.id;
-    auto result = pre_assembly_poses_getter_->async_send_request(request);
-
-    result.wait();
-
-    std::vector<ariac_msgs::msg::PartPose> agv_part_poses;
-    if (result.get()->valid_id)
-    {
-        agv_part_poses = result.get()->parts;
-
-        if (agv_part_poses.size() == 0)
-        {
-            RCLCPP_WARN(get_logger(), "No part poses received");
-            return false;
-        }
-    }
-    else
-    {
-        RCLCPP_WARN(get_logger(), "Not a valid order ID");
-        return false;
-    }
-
-    for (auto const &part_to_assemble : task.parts)
-    {
-        // Check if matching part exists in agv_parts
-        bool part_exists = false;
-        ariac_msgs::msg::PartPose part_to_pick;
-        part_to_pick.part = part_to_assemble.part;
-        for (auto const &agv_part : agv_part_poses)
-        {
-            if (agv_part.part.type == part_to_assemble.part.type && agv_part.part.color == part_to_assemble.part.color)
-            {
-                part_exists = true;
-                part_to_pick.pose = agv_part.pose;
-                break;
-            }
-        }
-
-        if (!part_exists)
-        {
-            RCLCPP_WARN_STREAM(get_logger(), "Part with type: " << part_to_assemble.part.type << " and color: " << part_to_assemble.part.color << " not found on tray");
-            continue;
-        }
-
-        // Pick up part
-        CeilingRobotPickAGVPart(part_to_pick);
-
-        CeilingRobotMoveToAssemblyStation(task.station);
-
-        // Assemble Part to insert
-        CeilingRobotAssemblePart(task.station, part_to_assemble);
-
-        CeilingRobotMoveToAssemblyStation(task.station);
-    }
-
-    return true;
+    rclcpp::shutdown();
 }
-
-
-
-bool FloorRobot::SubmitOrder(std::string order_id)
-{
-    rclcpp::Client<ariac_msgs::srv::SubmitOrder>::SharedPtr client;
-    std::string srv_name = "/ariac/submit_order";
-    client = this->create_client<ariac_msgs::srv::SubmitOrder>(srv_name);
-    auto request = std::make_shared<ariac_msgs::srv::SubmitOrder::Request>();
-    request->order_id = order_id;
-
-    auto result = client->async_send_request(request);
-    result.wait();
-
-    return result.get()->success;
-}
-
-bool FloorRobot::LockAGVTray(int agv_num)
-{
-    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr client;
-
-    std::string srv_name = "/ariac/agv" + std::to_string(agv_num) + "_lock_tray";
-
-    client = this->create_client<std_srvs::srv::Trigger>(srv_name);
-
-    auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
-
-    auto result = client->async_send_request(request);
-    result.wait();
-
-    return result.get()->success;
-}
-
-// bool FloorRobot::MoveAGV(int agv_num, int destination)
-// {
-//     rclcpp::Client<ariac_msgs::srv::MoveAGV>::SharedPtr client;
-
-//     std::string srv_name = "/ariac/move_agv" + std::to_string(agv_num);
-
-//     client = this->create_client<ariac_msgs::srv::MoveAGV>(srv_name);
-
-//     auto request = std::make_shared<ariac_msgs::srv::MoveAGV::Request>();
-//     request->location = destination;
-
-//     auto result = client->async_send_request(request);
-//     result.wait();
-
-//     return result.get()->success;
-// }

@@ -18,6 +18,9 @@
   <depend>ariac_msgs</depend>
   <depend>orocos_kdl</depend>
   <depend>std_srvs</depend>
+  <depend>std_msgs</depend>
+  <depend>shape_msgs</depend>
+  <depend>moveit_msgs</depend>
 
 
   <test_depend>ament_lint_auto</test_depend>

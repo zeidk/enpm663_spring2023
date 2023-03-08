@@ -1,3 +1,5 @@
+#pragma once
+
 #include <rclcpp/qos.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
@@ -24,26 +26,18 @@
 #include <kdl/frames.hpp>
 #include <tf2_kdl/tf2_kdl.h>
 
-
-
 #include <ariac_msgs/msg/order.hpp>
-#include <ariac_msgs/msg/competition_state.hpp>
 #include <ariac_msgs/msg/advanced_logical_camera_image.hpp>
 #include <ariac_msgs/msg/kitting_task.hpp>
 #include <ariac_msgs/msg/kit_tray_pose.hpp>
 #include <ariac_msgs/msg/vacuum_gripper_state.hpp>
-#include <ariac_msgs/msg/assembly_state.hpp>
-#include <ariac_msgs/msg/agv_status.hpp>
 
 #include <ariac_msgs/srv/change_gripper.hpp>
 #include <ariac_msgs/srv/vacuum_gripper_control.hpp>
-#include <ariac_msgs/srv/move_agv.hpp>
-#include <ariac_msgs/srv/submit_order.hpp>
 #include <ariac_msgs/srv/perform_quality_check.hpp>
-#include <ariac_msgs/srv/get_pre_assembly_poses.hpp>
 
-#include <competitor_msgs/msg/floor_robot_task.hpp>
-#include <competitor_msgs/msg/robots_status.hpp>
+// #include <competitor_msgs/msg/floor_robot_task.hpp>
+// #include <competitor_msgs/msg/robots_status.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
 
@@ -66,7 +60,6 @@ public:
 
     bool CompleteOrders();
     bool CompleteKittingTask(ariac_msgs::msg::KittingTask task);
-    bool CompleteAssemblyTask(ariac_msgs::msg::AssemblyTask task);
     bool CompleteCombinedTask(ariac_msgs::msg::CombinedTask task);
 
 private:
@@ -88,7 +81,6 @@ private:
     void AddModelToPlanningScene(std::string name, std::string mesh_file, geometry_msgs::msg::Pose model_pose);
     void AddModelsToPlanningScene();
 
-
     // MoveIt Interfaces
     moveit::planning_interface::MoveGroupInterface floor_robot_;
 
@@ -104,14 +96,39 @@ private:
 
     rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr floor_gripper_state_sub_;
 
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts1_camera_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts2_camera_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr left_bins_camera_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr right_bins_camera_sub_;
 
     // Gripper State
     ariac_msgs::msg::VacuumGripperState floor_gripper_state_;
     ariac_msgs::msg::Part floor_robot_attached_part_;
+    ariac_msgs::msg::VacuumGripperState ceiling_gripper_state_;
+    ariac_msgs::msg::Part ceiling_robot_attached_part_;
+
+    // Sensor poses
+    geometry_msgs::msg::Pose kts1_camera_pose_;
+    geometry_msgs::msg::Pose kts2_camera_pose_;
+    geometry_msgs::msg::Pose left_bins_camera_pose_;
+    geometry_msgs::msg::Pose right_bins_camera_pose_;
 
     // Trays
     std::vector<ariac_msgs::msg::KitTrayPose> kts1_trays_;
     std::vector<ariac_msgs::msg::KitTrayPose> kts2_trays_;
+
+    // Bins
+    std::vector<ariac_msgs::msg::PartPose> left_bins_parts_;
+    std::vector<ariac_msgs::msg::PartPose> right_bins_parts_;
+
+    // Callback Groups
+    rclcpp::CallbackGroup::SharedPtr topic_cb_group_;
+
+    // Sensor Callbacks
+    bool kts1_camera_received_data = false;
+    bool kts2_camera_received_data = false;
+    bool left_bins_camera_received_data = false;
+    bool right_bins_camera_received_data = false;
 
     void kts1_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void kts2_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
@@ -123,7 +140,6 @@ private:
 
     // ARIAC Services
     rclcpp::Client<ariac_msgs::srv::PerformQualityCheck>::SharedPtr quality_checker_;
-    rclcpp::Client<ariac_msgs::srv::GetPreAssemblyPoses>::SharedPtr pre_assembly_poses_getter_;
     rclcpp::Client<ariac_msgs::srv::ChangeGripper>::SharedPtr floor_robot_tool_changer_;
     rclcpp::Client<ariac_msgs::srv::VacuumGripperControl>::SharedPtr floor_robot_gripper_enable_;
 
