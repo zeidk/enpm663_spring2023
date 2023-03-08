@@ -1,4 +1,4 @@
-#include <floor_robot.hpp>
+#include "floor_robot.hpp"
 
 FloorRobot::FloorRobot()
     : Node("floor_robot_node"),
@@ -39,11 +39,11 @@ FloorRobot::FloorRobot()
         "/ariac/floor_robot_gripper_state", rclcpp::SensorDataQoS(),
         std::bind(&FloorRobot::floor_gripper_state_cb, this, std::placeholders::_1), options);
 
-        // Initialize service clients
+    // Initialize service clients
     quality_checker_ = this->create_client<ariac_msgs::srv::PerformQualityCheck>("/ariac/perform_quality_check");
     floor_robot_tool_changer_ = this->create_client<ariac_msgs::srv::ChangeGripper>("/ariac/floor_robot_change_gripper");
     floor_robot_gripper_enable_ = this->create_client<ariac_msgs::srv::VacuumGripperControl>("/ariac/floor_robot_enable_gripper");
-  
+
     AddModelsToPlanningScene();
 
     RCLCPP_INFO(this->get_logger(), "Initialization successful.");
@@ -53,7 +53,6 @@ FloorRobot::~FloorRobot()
 {
     floor_robot_.~MoveGroupInterface();
 }
-
 
 void FloorRobot::kts1_camera_cb(
     const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg)
@@ -751,7 +750,6 @@ bool FloorRobot::FloorRobotPlacePartOnKitTray(int agv_num, int quadrant)
     return true;
 }
 
-
 bool FloorRobot::CompleteOrders()
 {
     // Wait for first order to be published
@@ -802,8 +800,8 @@ bool FloorRobot::CompleteOrders()
     //         FloorRobot::CompleteCombinedTask(current_order_.combined_task);
     //     }
 
-        // Submit order
-        // FloorRobot::SubmitOrder(current_order_.id);
+    // Submit order
+    // FloorRobot::SubmitOrder(current_order_.id);
     // }
 
     // return success;
