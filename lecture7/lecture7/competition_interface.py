@@ -13,6 +13,7 @@ from ariac_msgs.msg import KittingPart as KittingPartMsg
 from ariac_msgs.msg import AssemblyPart as AssemblyPartMsg
 
 from competitor_interfaces.msg import FloorRobotTask as FloorRobotTaskMsg
+from competitor_interfaces.msg import CompletedOrder as CompletedOrderMsg
 
 from ariac_msgs.srv import MoveAGV as MoveAGVSrv
 from std_srvs.srv import Trigger
@@ -109,6 +110,7 @@ class CompetitionInterface(Node):
 
         self.competition_state = None
         self.orders = []
+        self.announced_orders = []
 
         # Create subscription to competition state
         self.competition_state_sub = self.create_subscription(
@@ -124,6 +126,13 @@ class CompetitionInterface(Node):
             self.orders_cb,
             10)
         
+        # Create subscription to orders
+        self.completed_order_sub = self.create_subscription(
+            CompletedOrderMsg,
+            '/competitor/completed_order',
+            self.completed_order_cb,
+            1)
+        
         # Publishers
         self.floor_robot_task_pub = self.create_publisher(FloorRobotTaskMsg, '/competitor/floor_robot_task', 1)
         
@@ -136,6 +145,20 @@ class CompetitionInterface(Node):
 
     # -----------------------------------------------------------------------------
 
+    def completed_order_cb(self, msg) -> None:
+        '''Callback to process completed orders.
+
+        Arguments:
+            msg -- ROS2 message of type competitor_interfaces/CompletedOrder
+        '''
+        for order in self.announced_orders:
+            if order.id == msg.order_id:
+                if order.type == OrderMsg.KITTING:
+                    agv = order.kitting_task.agv_number
+                    self.lock_agv(agv)
+                    self.move_agv(agv, order.kitting_task.destination)
+                
+                
     def task_manager_cb(self) -> None:
         '''Callback to process orders.
 
@@ -152,6 +175,7 @@ class CompetitionInterface(Node):
                 msg.priority = order.priority
                 # Publish the message
                 self.floor_robot_task_pub.publish(msg)
+                self.announced_orders.append(order)
                 self.orders.remove(order)
         
         

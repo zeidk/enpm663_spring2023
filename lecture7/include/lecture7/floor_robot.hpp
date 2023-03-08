@@ -37,6 +37,7 @@
 #include <ariac_msgs/srv/perform_quality_check.hpp>
 
 #include <competitor_interfaces/msg/floor_robot_task.hpp>
+#include <competitor_interfaces/msg/completed_order.hpp>
 // #include <competitor_msgs/msg/robots_status.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
@@ -92,8 +93,11 @@ private:
     std::unique_ptr<tf2_ros::Buffer> tf_buffer = std::make_unique<tf2_ros::Buffer>(get_clock());
     std::shared_ptr<tf2_ros::TransformListener> tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
 
-    // Subscriptions
+    // Publishers
+    /*!< Publisher to the topic /ariac/orders */
+    rclcpp::Publisher<competitor_interfaces::msg::CompletedOrder>::SharedPtr completed_order_pub_;
 
+    // Subscriptions
     rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr floor_gripper_state_sub_;
 
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts1_camera_sub_;

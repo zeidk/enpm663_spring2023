@@ -43,6 +43,10 @@ FloorRobot::FloorRobot()
         "/competitor/floor_robot_task", 1,
         std::bind(&FloorRobot::floor_robot_task_cb, this, std::placeholders::_1), options);
 
+
+    // Initialize publishers
+    completed_order_pub_ = this->create_publisher<competitor_interfaces::msg::CompletedOrder>("/competitor/completed_order", 10);
+
     // Initialize service clients
     quality_checker_ = this->create_client<ariac_msgs::srv::PerformQualityCheck>("/ariac/perform_quality_check");
     floor_robot_tool_changer_ = this->create_client<ariac_msgs::srv::ChangeGripper>("/ariac/floor_robot_change_gripper");
@@ -116,14 +120,11 @@ void FloorRobot::floor_gripper_state_cb(
     floor_gripper_state_ = *msg;
 }
 
-
-
 void FloorRobot::floor_robot_task_cb(
     const competitor_interfaces::msg::FloorRobotTask::ConstSharedPtr msg)
 {
     orders_.push_back(*msg);
 }
-
 
 geometry_msgs::msg::Pose FloorRobot::MultiplyPose(
     geometry_msgs::msg::Pose p1, geometry_msgs::msg::Pose p2)
@@ -773,13 +774,12 @@ bool FloorRobot::CompleteOrders()
     bool success;
     while (true)
     {
-
+        // complete each order from the queue
         if (orders_.size() == 0)
         {
-        
-                RCLCPP_INFO(get_logger(), "Completed all orders");
-                success = true;
-                break;
+            RCLCPP_INFO(get_logger(), "Completed all orders");
+            success = true;
+            break;
         }
 
         current_order_ = orders_.front();
@@ -790,6 +790,9 @@ bool FloorRobot::CompleteOrders()
             FloorRobot::CompleteKittingTask(current_order_.kitting_task);
         }
         // publish status
+        auto completed_order = competitor_interfaces::msg::CompletedOrder();
+        completed_order.order_id = current_order_.id;
+        completed_order_pub_->publish(completed_order);
     }
 
     return success;
@@ -798,6 +801,7 @@ bool FloorRobot::CompleteOrders()
 
 bool FloorRobot::CompleteKittingTask(ariac_msgs::msg::KittingTask task)
 {
+
     FloorRobotSendHome();
 
     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);

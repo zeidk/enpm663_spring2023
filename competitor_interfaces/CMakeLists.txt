@@ -15,7 +15,7 @@ find_package(rosidl_default_generators REQUIRED)
 set(msg_files
   "msg/CeilingRobotTask.msg"
   "msg/FloorRobotTask.msg"
-  "msg/RobotsStatus.msg"
+  "msg/CompletedOrder.msg"
 )
 
 
