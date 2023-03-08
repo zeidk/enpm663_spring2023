@@ -137,9 +137,10 @@ class CompetitionInterface(Node):
         Arguments:
             msg -- ROS2 message of type ariac_msgs/Order
         '''
+        pass
         
-        for order in self.orders:
-            self.get_logger().info(f'Order: {order}')
+        # for order in self.orders:
+        #     self.get_logger().info(f'Order: {order}')
         
         
     # -----------------------------------------------------------------------------
@@ -150,7 +151,8 @@ class CompetitionInterface(Node):
         Arguments:
             msg -- ROS2 message of type ariac_msgs/Order
         '''
-        self.orders.append(Order(msg))
+        # self.orders.append(Order(msg))
+        self.orders.append(msg)
 
     # -----------------------------------------------------------------------------
 

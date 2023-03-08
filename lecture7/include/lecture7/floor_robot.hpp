@@ -24,7 +24,7 @@
 #include <kdl/frames.hpp>
 #include <tf2_kdl/tf2_kdl.h>
 
-#include <std_srvs/srv/trigger.hpp>
+
 
 #include <ariac_msgs/msg/order.hpp>
 #include <ariac_msgs/msg/competition_state.hpp>
@@ -41,6 +41,9 @@
 #include <ariac_msgs/srv/submit_order.hpp>
 #include <ariac_msgs/srv/perform_quality_check.hpp>
 #include <ariac_msgs/srv/get_pre_assembly_poses.hpp>
+
+#include <competitor_msgs/msg/floor_robot_task.hpp>
+#include <competitor_msgs/msg/robots_status.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
 
@@ -74,7 +77,7 @@ private:
 
     geometry_msgs::msg::Quaternion SetRobotOrientation(double rotation);
 
-    // Helper Functions
+    // Helper Functions (should be moved to utils)
     void LogPose(geometry_msgs::msg::Pose p);
     geometry_msgs::msg::Pose MultiplyPose(geometry_msgs::msg::Pose p1, geometry_msgs::msg::Pose p2);
     geometry_msgs::msg::Pose BuildPose(double x, double y, double z, geometry_msgs::msg::Quaternion orientation);
