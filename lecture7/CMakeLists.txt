@@ -16,7 +16,7 @@ find_package(tf2_ros REQUIRED)
 find_package(orocos_kdl REQUIRED)
 find_package(std_srvs REQUIRED)
 
-include_directories(include/lecture6)
+include_directories(include/lecture7)
 
 set(dependencies
   rclcpp
@@ -29,12 +29,21 @@ set(dependencies
   tf2_geometry_msgs
 )
 
-add_executable(lecture6 src/sensor_camera.cpp src/main.cpp)
-ament_target_dependencies(lecture6 ${dependencies})
+add_executable(lecture7_exe src/sensor_camera.cpp src/main.cpp)
+ament_target_dependencies(lecture7_exe ${dependencies})
+
+# Install Python modules
+ament_python_install_package(${PROJECT_NAME} SCRIPTS_DESTINATION lib/${PROJECT_NAME})
+
+# Install Python executables
+install(PROGRAMS
+  nodes/main.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 install(TARGETS
- lecture6
-DESTINATION lib/${PROJECT_NAME})
+  lecture7_exe
+  DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch include config rviz
   DESTINATION share/${PROJECT_NAME}/

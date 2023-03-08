@@ -54,9 +54,9 @@ def launch_setup(context, *args, **kwargs):
 
     robot_description_kinematics = {"robot_description_kinematics": load_yaml("ariac_moveit_config", "config/kinematics.yaml")}
 
-    lecture6 = Node(
-        package="lecture6",
-        executable="lecture6",
+    lecture7 = Node(
+        package="lecture7",
+        executable="lecture7_exe",
         output="screen",
         parameters=[
             robot_description,
@@ -64,6 +64,12 @@ def launch_setup(context, *args, **kwargs):
             robot_description_kinematics,
             {"use_sim_time": True},
         ],
+    )
+    
+    competitor_start = Node(
+        package="lecture7",
+        executable="main.py",
+        output="screen",
     )
 
     start_rviz = LaunchConfiguration("rviz")
@@ -88,7 +94,8 @@ def launch_setup(context, *args, **kwargs):
     )
 
     nodes_to_start = [
-        lecture6,
+        # lecture7,
+        competitor_start,
         rviz_node
     ]
 
