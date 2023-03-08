@@ -12,6 +12,8 @@ from ariac_msgs.msg import AssemblyTask as AssemblyTaskMsg
 from ariac_msgs.msg import KittingPart as KittingPartMsg
 from ariac_msgs.msg import AssemblyPart as AssemblyPartMsg
 
+from competitor_interfaces.msg import FloorRobotTask as FloorRobotTaskMsg
+
 from ariac_msgs.srv import MoveAGV as MoveAGVSrv
 from std_srvs.srv import Trigger
 
@@ -122,6 +124,9 @@ class CompetitionInterface(Node):
             self.orders_cb,
             10)
         
+        # Publishers
+        self.floor_robot_task_pub = self.create_publisher(FloorRobotTaskMsg, '/competitor/floor_robot_task', 1)
+        
         # services
         self.start_competition_client = self.create_client(Trigger, '/ariac/start_competition')
         self.end_competition_client = self.create_client(Trigger, '/ariac/end_competition')
@@ -137,10 +142,17 @@ class CompetitionInterface(Node):
         Arguments:
             msg -- ROS2 message of type ariac_msgs/Order
         '''
-        pass
         
-        # for order in self.orders:
-        #     self.get_logger().info(f'Order: {order}')
+        for order in self.orders:
+            if order.type == OrderMsg.KITTING:
+                msg = FloorRobotTaskMsg()
+                msg.id = order.id
+                msg.type = FloorRobotTaskMsg.KITTING
+                msg.kitting_task = order.kitting_task
+                msg.priority = order.priority
+                # Publish the message
+                self.floor_robot_task_pub.publish(msg)
+                self.orders.remove(order)
         
         
     # -----------------------------------------------------------------------------

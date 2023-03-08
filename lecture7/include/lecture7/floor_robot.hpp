@@ -36,7 +36,7 @@
 #include <ariac_msgs/srv/vacuum_gripper_control.hpp>
 #include <ariac_msgs/srv/perform_quality_check.hpp>
 
-// #include <competitor_msgs/msg/floor_robot_task.hpp>
+#include <competitor_interfaces/msg/floor_robot_task.hpp>
 // #include <competitor_msgs/msg/robots_status.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
@@ -100,6 +100,11 @@ private:
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts2_camera_sub_;
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr left_bins_camera_sub_;
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr right_bins_camera_sub_;
+    rclcpp::Subscription<competitor_interfaces::msg::FloorRobotTask>::SharedPtr floor_robot_task_sub_;
+
+    // Orders List
+    competitor_interfaces::msg::FloorRobotTask current_order_;
+    std::vector<competitor_interfaces::msg::FloorRobotTask> orders_;
 
     // Gripper State
     ariac_msgs::msg::VacuumGripperState floor_gripper_state_;
@@ -129,6 +134,7 @@ private:
     bool kts2_camera_received_data = false;
     bool left_bins_camera_received_data = false;
     bool right_bins_camera_received_data = false;
+    bool floor_robot_task_received_data_ = false;
 
     void kts1_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void kts2_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
@@ -137,6 +143,9 @@ private:
 
     // Gripper State Callback
     void floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg);
+
+    // Floor Robot Task Callback
+    void floor_robot_task_cb(const competitor_interfaces::msg::FloorRobotTask::ConstSharedPtr msg);
 
     // ARIAC Services
     rclcpp::Client<ariac_msgs::srv::PerformQualityCheck>::SharedPtr quality_checker_;

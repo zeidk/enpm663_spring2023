@@ -54,9 +54,9 @@ def launch_setup(context, *args, **kwargs):
 
     robot_description_kinematics = {"robot_description_kinematics": load_yaml("ariac_moveit_config", "config/kinematics.yaml")}
 
-    lecture7 = Node(
+    floor_robot = Node(
         package="lecture7",
-        executable="lecture7_exe",
+        executable="floor_robot_exe",
         output="screen",
         parameters=[
             robot_description,
@@ -94,7 +94,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     nodes_to_start = [
-        # lecture7,
+        floor_robot,
         competitor_start,
         rviz_node
     ]

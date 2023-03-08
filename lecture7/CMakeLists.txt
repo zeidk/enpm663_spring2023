@@ -32,6 +32,7 @@ set(FLOOR_ROBOT_DEPENDENCIES
   rclcpp 
   moveit_ros_planning_interface
   ariac_msgs
+  competitor_interfaces
   shape_msgs
 )
 

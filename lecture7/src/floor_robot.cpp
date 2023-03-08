@@ -39,6 +39,10 @@ FloorRobot::FloorRobot()
         "/ariac/floor_robot_gripper_state", rclcpp::SensorDataQoS(),
         std::bind(&FloorRobot::floor_gripper_state_cb, this, std::placeholders::_1), options);
 
+    floor_robot_task_sub_ = this->create_subscription<competitor_interfaces::msg::FloorRobotTask>(
+        "/competitor/floor_robot_task", 1,
+        std::bind(&FloorRobot::floor_robot_task_cb, this, std::placeholders::_1), options);
+
     // Initialize service clients
     quality_checker_ = this->create_client<ariac_msgs::srv::PerformQualityCheck>("/ariac/perform_quality_check");
     floor_robot_tool_changer_ = this->create_client<ariac_msgs::srv::ChangeGripper>("/ariac/floor_robot_change_gripper");
@@ -111,6 +115,15 @@ void FloorRobot::floor_gripper_state_cb(
 {
     floor_gripper_state_ = *msg;
 }
+
+
+
+void FloorRobot::floor_robot_task_cb(
+    const competitor_interfaces::msg::FloorRobotTask::ConstSharedPtr msg)
+{
+    orders_.push_back(*msg);
+}
+
 
 geometry_msgs::msg::Pose FloorRobot::MultiplyPose(
     geometry_msgs::msg::Pose p1, geometry_msgs::msg::Pose p2)
@@ -753,59 +766,34 @@ bool FloorRobot::FloorRobotPlacePartOnKitTray(int agv_num, int quadrant)
 bool FloorRobot::CompleteOrders()
 {
     // Wait for first order to be published
-    // while (orders_.size() == 0)
-    // {
-    // }
+    while (orders_.size() == 0)
+    {
+    }
 
-    // bool success;
-    // while (true)
-    // {
-    //     if (competition_state_ == ariac_msgs::msg::CompetitionState::ENDED)
-    //     {
-    //         success = false;
-    //         break;
-    //     }
+    bool success;
+    while (true)
+    {
 
-    //     if (orders_.size() == 0)
-    //     {
-    //         if (competition_state_ != ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE)
-    //         {
-    //             // wait for more orders
-    //             RCLCPP_INFO(get_logger(), "Waiting for orders...");
-    //             while (orders_.size() == 0)
-    //             {
-    //             }
-    //         }
-    //         else
-    //         {
-    //             RCLCPP_INFO(get_logger(), "Completed all orders");
-    //             success = true;
-    //             break;
-    //         }
-    //     }
+        if (orders_.size() == 0)
+        {
+        
+                RCLCPP_INFO(get_logger(), "Completed all orders");
+                success = true;
+                break;
+        }
 
-    //     current_order_ = orders_.front();
-    //     orders_.erase(orders_.begin());
+        current_order_ = orders_.front();
+        orders_.erase(orders_.begin());
 
-    //     if (current_order_.type == ariac_msgs::msg::Order::KITTING)
-    //     {
-    //         FloorRobot::CompleteKittingTask(current_order_.kitting_task);
-    //     }
-    //     else if (current_order_.type == ariac_msgs::msg::Order::ASSEMBLY)
-    //     {
-    //         FloorRobot::CompleteAssemblyTask(current_order_.assembly_task);
-    //     }
-    //     else if (current_order_.type == ariac_msgs::msg::Order::COMBINED)
-    //     {
-    //         FloorRobot::CompleteCombinedTask(current_order_.combined_task);
-    //     }
+        if (current_order_.type == ariac_msgs::msg::Order::KITTING)
+        {
+            FloorRobot::CompleteKittingTask(current_order_.kitting_task);
+        }
+        // publish status
+    }
 
-    // Submit order
-    // FloorRobot::SubmitOrder(current_order_.id);
-    // }
-
-    // return success;
-    return true;
+    return success;
+    // return true;
 }
 
 bool FloorRobot::CompleteKittingTask(ariac_msgs::msg::KittingTask task)
@@ -821,15 +809,15 @@ bool FloorRobot::CompleteKittingTask(ariac_msgs::msg::KittingTask task)
     }
 
     // Check quality
-    // auto request = std::make_shared<ariac_msgs::srv::PerformQualityCheck::Request>();
-    // request->order_id = current_order_.id;
-    // auto result = quality_checker_->async_send_request(request);
-    // result.wait();
+    auto request = std::make_shared<ariac_msgs::srv::PerformQualityCheck::Request>();
+    request->order_id = current_order_.id;
+    auto result = quality_checker_->async_send_request(request);
+    result.wait();
 
-    // if (!result.get()->all_passed)
-    // {
-    //     RCLCPP_ERROR(get_logger(), "Issue with shipment");
-    // }
+    if (!result.get()->all_passed)
+    {
+        RCLCPP_ERROR(get_logger(), "Issue with shipment");
+    }
 
     // MoveAGV(task.agv_number, task.destination);
 
@@ -840,12 +828,18 @@ bool FloorRobot::CompleteKittingTask(ariac_msgs::msg::KittingTask task)
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<FloorRobot>();
+    auto floor_robot = std::make_shared<FloorRobot>();
     rclcpp::executors::MultiThreadedExecutor executor;
-    executor.add_node(node);
+    executor.add_node(floor_robot);
     std::thread([&executor]()
                 { executor.spin(); })
         .detach();
+    // floor_robot->FloorRobotSendHome();
+    floor_robot->CompleteOrders();
+
+    while (rclcpp::ok())
+    {
+    }
 
     rclcpp::shutdown();
 }
