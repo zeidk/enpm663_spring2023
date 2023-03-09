@@ -15,7 +15,7 @@ from ariac_msgs.msg import AssemblyPart as AssemblyPartMsg
 from competitor_interfaces.msg import FloorRobotTask as FloorRobotTaskMsg
 from competitor_interfaces.msg import CompletedOrder as CompletedOrderMsg
 
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 
 from ariac_msgs.srv import MoveAGV as MoveAGVSrv
 from ariac_msgs.srv import SubmitOrder as SubmitOrderSrv
@@ -87,7 +87,7 @@ from std_srvs.srv import Trigger
 #             self.order_task = CombinedTask(msg.combined_task)
 #         else:
 #             self.order_task = None
-            
+
 #     def __str__(self) -> str:
 #         return f'Order ID: {self.order_id}, Order Type: {self.order_type}, Order Priority: {self.order_priority}'
 
@@ -114,45 +114,46 @@ class CompetitionInterface(Node):
         self.competition_state = None
         self.orders = []
         self.announced_orders = []
-        
+
         # Multithreading
-        self.group1 = MutuallyExclusiveCallbackGroup()
-        self.group2 = MutuallyExclusiveCallbackGroup()
-        self.group3 = MutuallyExclusiveCallbackGroup()
-        self.group4 = MutuallyExclusiveCallbackGroup()
+        # Since services are called within a callback, we need to use two different callback groups
+        # See https://docs.ros.org/en/foxy/How-To-Guides/Using-callback-groups.html
+        self.client_cb_group = MutuallyExclusiveCallbackGroup()
+        self.timer_cb_group = MutuallyExclusiveCallbackGroup()
 
         # Create subscription to competition state
         self.competition_state_sub = self.create_subscription(
             CompetitionState,
             '/ariac/competition_state',
             self.competition_state_cb,
-            10, callback_group=self.group1)
+            10)
 
         # Create subscription to orders
         self.orders_sub = self.create_subscription(
             OrderMsg,
             '/ariac/orders',
             self.orders_cb,
-            10,
-            callback_group=self.group1)
-        
+            10)
+
         # Create subscription to orders
         self.completed_order_sub = self.create_subscription(
             CompletedOrderMsg,
             '/competitor/completed_order',
             self.completed_order_cb,
-            1,
-            callback_group=self.group1)
-        
-        # Publishers
+            10)
+
+        # publishers
         self.floor_robot_task_pub = self.create_publisher(FloorRobotTaskMsg, '/competitor/floor_robot_task', 1)
 
         # services
         self.start_competition_client = self.create_client(Trigger, '/ariac/start_competition')
         self.end_competition_client = self.create_client(Trigger, '/ariac/end_competition')
-         
+
+        # timer callback
         timer_period = 0.5  # seconds
-        self.task_manager_timer = self.create_timer(timer_period, self.task_manager_cb, callback_group=self.group2)
+        self.task_manager_timer = self.create_timer(
+            timer_period, self.task_manager_cb, callback_group=self.timer_cb_group)
+        
         self.submitted_order = None
 
         self.start_competition()
@@ -166,17 +167,14 @@ class CompetitionInterface(Node):
         '''
         # self.get_logger().info('completed_order_cb')
         self.submitted_order = msg
-        
-                
-                
+
     def task_manager_cb(self) -> None:
         '''Callback to process orders.
 
         Arguments:
             msg -- ROS2 message of type ariac_msgs/Order
         '''
-        # self.get_logger().info('task_manager_cb')
-        
+
         if len(self.orders) > 0:
             for order in self.orders:
                 if order.type == OrderMsg.KITTING:
@@ -189,7 +187,7 @@ class CompetitionInterface(Node):
                     self.floor_robot_task_pub.publish(msg)
                     self.announced_orders.append(order)
                     self.orders.remove(order)
-                
+
         if self.submitted_order is not None:
             for order in self.announced_orders:
                 if order.id == self.submitted_order.order_id:
@@ -198,11 +196,14 @@ class CompetitionInterface(Node):
                         self.lock_agv(agv)
                         self.move_agv(agv, order.kitting_task.destination)
                         self.submit_order(order.id)
-                        # self.announced_orders.remove(order)
                         self.submitted_order = None
-        # self.get_logger().info('task_manager_cb')
+        self.get_logger().info('task_manager_cb')
         
-        
+        # To do: add logic to end the competition
+        # if self.competition_state == CompetitionState.ORDER_ANNOUNCEMENTS_DONE
+        # and if number of submitted orders == number of announced orders
+        # then end the competition
+
     # -----------------------------------------------------------------------------
 
     def orders_cb(self, msg: OrderMsg) -> None:
@@ -284,53 +285,50 @@ class CompetitionInterface(Node):
             self.get_logger().info('Unable to end competition')
 
     # -----------------------------------------------------------------------------
+    
     def lock_agv(self, agv_num):
         service_name = '/ariac/agv' + str(agv_num) + '_lock_tray'
-        self.get_logger().info(service_name)
-        lock_agv_client = self.create_client(Trigger, service_name, callback_group=self.group3)
-        # Create trigger request and call lock agv service
+        lock_agv_client = self.create_client(Trigger, service_name, callback_group=self.client_cb_group)
         request = Trigger.Request()
-        future = lock_agv_client.call_async(request)
+        # Note: this is a synchronous call
+        # This is fine since it is running in a separate thread
+        _ = lock_agv_client.call(request) 
 
-        # Wait until the service call is completed
-        rclpy.spin_until_future_complete(self, future)
-
-        if future.result().success:
-            self.get_logger().info(f'Tray locked on agv{agv_num}.')
-        else:
-            self.get_logger().info(f'Unable to to lock agv{agv_num}')
+        # if response.result().success:
+        #     self.get_logger().info(f'Tray locked on agv{agv_num}.')
+        # else:
+        #     self.get_logger().info(f'Unable to to lock agv{agv_num}')
 
     # -----------------------------------------------------------------------------
+
     def move_agv(self, agv_num, destination):
         '''Function which contains the service to move an AGV to a station.
         '''
 
         service_name = '/ariac/move_agv' + str(agv_num)
-        move_agv_client = self.create_client(MoveAGVSrv, service_name)
+        move_agv_client = self.create_client(MoveAGVSrv, service_name, callback_group=self.client_cb_group)
+
         # Create trigger request and call starter service
         request = MoveAGVSrv.Request()
         request.location = destination
-        future = move_agv_client.call_async(request)
-
-        # Wait until the service call is completed
-        rclpy.spin_until_future_complete(self, future)
-
-        if future.result().success:
-            self.get_logger().info(f'AGV is moving to {destination}')
-        else:
-            self.get_logger().info(f'Unable to complete {service_name} service')
+        # Note: this is a synchronous call
+        # This is fine since it is running in a separate thread
+        _ = move_agv_client.call(request)
 
     # -----------------------------------------------------------------------------
+    
     def submit_order(self, order_id):
-        submit_order_client = self.create_client(SubmitOrderSrv, '/ariac/submit_order')
+        '''Function which contains the service to submit an order.
+
+        Arguments:
+            order_id -- ID of the order to be submitted
+        '''
+
+        submit_order_client = self.create_client(
+            SubmitOrderSrv, '/ariac/submit_order', callback_group=self.client_cb_group)
+
         request = SubmitOrderSrv.Request()
         request.order_id = order_id
-        future = submit_order_client.call_async(request)
-        # Wait until the service call is completed
-        rclpy.spin_until_future_complete(self, future)
-
-        if future.result().success:
-            self.get_logger().info(f'Order {order_id} has been submitted')
-        else:
-            self.get_logger().info(f'Unable to submit order {order_id}')
-        
+        # Note: this is a synchronous call
+        # This is fine since it is running in a separate thread
+        _ = submit_order_client.call(request)

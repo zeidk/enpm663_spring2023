@@ -864,7 +864,7 @@ int main(int argc, char *argv[])
                 { executor.spin(); })
         .detach();
     // floor_robot->FloorRobotSendHome();
-    // floor_robot->CompleteOrders();
+    floor_robot->CompleteOrders();
 
     rclcpp::shutdown();
 }

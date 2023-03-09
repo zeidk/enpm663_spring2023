@@ -8,18 +8,12 @@ from lecture7.competition_interface import CompetitionInterface
 
 def main(args=None):
     rclpy.init(args=args)
-
     node = CompetitionInterface()
     # rclpy.spin(node)
-    
-    
     executor = MultiThreadedExecutor()
     executor.add_node(node)
 
-    # node.start_competition()
-    
     try:
-        print("")
         node.get_logger().info('Starting competitor node, end with CTRL-C')
         executor.spin()
     except KeyboardInterrupt:
